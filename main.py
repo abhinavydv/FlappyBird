@@ -2,6 +2,7 @@ from kivy.app import App, runTouchApp
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.properties import StringProperty
 from kivy.core.window import Window
 from kivy.lang.builder import Builder
 from kivy.clock import Clock
@@ -12,12 +13,13 @@ kv="""
 #: import Window kivy.core.window.Window
 
 <Bird>:
+    
     size_hint: root.normal_size_hint
     height: self.width
-    pos_hint: {"x": .3}
     
     canvas:
         Rectangle:
+        
             size: root.size
             pos: root.pos
             source: root.image
@@ -94,7 +96,7 @@ Builder.load_string(kv)
 
 class PipeUp(Widget):
     tag = "danger"
-    image="assets/images/pipe-green-down.png"
+    image=StringProperty("assets/images/pipe-green-down.png")
     
     
 class PipeDown(Widget):
@@ -113,16 +115,21 @@ class Pipes(BoxLayout):
 class Bird(Widget):
     tag="player"
     images=["assets/images/bluebird-upflap.png", "assets/images/bluebird-midflap.png", "assets/images/bluebird-downflap.png"]
-    image=images[0]
+    image=StringProperty(images[0])
     normal_size_hint=[0.08, None]
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.velocity=[0,0]
-        self.y=Window.height/2
+        self.initial_v=[0,0]
+        self.velocity=self.initial_v.copy()
+        self.initial_x= 0.3*Window.width
+        self.initial_y=Window.height/2
+        self.y=self.initial_y
+        self.x=self.initial_x
         self.initial_g=-4000
         self.g=self.initial_g 
         self.status="alive"
+        self.image_no=0
         
     def fly(self):
         if self.status=="alive":
@@ -132,6 +139,8 @@ class Bird(Widget):
         self.pos[0]+=self.velocity[0]*dt
         self.pos[1]+=self.velocity[1]*dt
         self.velocity[1]+=self.g*dt
+        self.image = self.images[(self.image_no//10)%len(self.images)]
+        self.image_no+=1
 
     def die(self, dt):
         self.update(dt)
@@ -166,6 +175,7 @@ class Spawner:
         if self.world.bird.status!="collided":
             for i in self.pipes:
                 if i.up.collide_widget(self.world.bird) or  i.down.collide_widget(self.world.bird):
+                    self.world.bird.velocity[0]=2*self.velocity#
                     return True 
         if self.world.ground.collide_widget(self.world.bird):
                 self.world.bird.fly()
@@ -186,7 +196,7 @@ class Spawner:
                 self.world.status="stopped"
                 return
             self.world.bird.status="collided"
-            self.world.bird.size_hint_x*=2
+            # self.world.bird.size_hint_x*=2
         
         for i in self.pipes:
             if i.center>=bird.center:
@@ -221,14 +231,18 @@ class World(FloatLayout):
             self.score=-1
             self.increase_score()
             self.status="running"
-            self.bird.y=Window.height/2
+            self.bird.y=self.bird.initial_y
+            self.bird.x=self.bird.initial_x
             self.bird.status="alive"
-            self.bird.fly()
+            
             self.bird.g=self.bird.initial_g
             self.spawner.timer=self.spawner.initial_t
             self.spawner.time=self.spawner.timer
             self.spawner.velocity=self.spawner.initial_v
             self.bird.size_hint=self.bird.normal_size_hint
+            self.bird.velocity=self.bird.initial_v.copy()
+            self.bird.fly()
+        
         elif self.status=="running":
             self.bird.fly()
         
