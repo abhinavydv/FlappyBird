@@ -3,6 +3,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import StringProperty
+from kivy.core.audio import SoundLoader
 from kivy.core.window import Window
 from kivy.lang.builder import Builder
 from kivy.clock import Clock
@@ -130,10 +131,15 @@ class Bird(Widget):
         self.g=self.initial_g 
         self.status="alive"
         self.image_no=0
+        self.wing=SoundLoader.load("assets/audio/wing.ogg")
+        self.swoosh=SoundLoader.load("assets/audio/swoosh.ogg")
         
     def fly(self):
         if self.status=="alive":
             self.velocity[1]=1000
+            
+            self.wing.play()
+            Clock.schedule_once(lambda dt:self.swoosh.play(), .1)
         
     def update(self, dt):
         self.pos[0]+=self.velocity[0]*dt
@@ -192,10 +198,12 @@ class Spawner:
         c=0
         bird=self.world.bird
         if self.collides():
+            self.world.hit.play()
             if self.world.bird.status=="collided":
                 self.world.status="stopped"
                 return
             self.world.bird.status="collided"
+            self.world.die.play()
             # self.world.bird.size_hint_x*=2
         
         for i in self.pipes:
@@ -217,6 +225,10 @@ class World(FloatLayout):
         self.spawner = Spawner(self)
         self.status="waiting"
         self.score=0
+        self.die=SoundLoader.load("assets/audio/die.ogg")
+        
+        self.hit=SoundLoader.load("assets/audio/hit.ogg")
+        self.point=SoundLoader.load("assets/audio/point.ogg")
 
     def on_touch_down(self, touch):
         self.touched()
@@ -259,7 +271,9 @@ class World(FloatLayout):
             self.bird.die(dt)
                 
     def increase_score(self):
+        self.point.play()
         self.score+=1
+        
         self.score_lbl.text=str(self.score)
 
     
